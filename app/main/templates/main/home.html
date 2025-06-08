@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Speech to Text{% endblock %}
+
+{% block content %}
+<div class="jumbotron bg-light p-5 rounded-lg m-3 text-center">
+    <h1 class="display-4">Welcome to Speech to Text</h1>
+    <p class="lead">Convert your audio files to text with high accuracy using AI-powered transcription.</p>
+    
+    <hr class="my-4">
+    
+    {% if user.is_authenticated %}
+        <p>Get started by uploading a new audio file or view your previous transcriptions.</p>
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+            <a href="{% url 'audio:upload_audio' %}" class="btn btn-primary btn-lg px-4 gap-3">
+                <i class="bi bi-upload"></i> Upload Audio
+            </a>
+            <a href="{% url 'audio:audio_list' %}" class="btn btn-outline-secondary btn-lg px-4">
+                <i class="bi bi-list-ul"></i> My Transcriptions
+            </a>
+        </div>
+    {% else %}
+        <p>Please log in to start using the service.</p>
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+            <a href="{% url 'login' %}" class="btn btn-primary btn-lg px-4 me-sm-3">
+                <i class="bi bi-box-arrow-in-right"></i> Login
+            </a>
+            <a href="{% url 'admin:index' %}" class="btn btn-outline-secondary btn-lg px-4">
+                <i class="bi bi-person-plus"></i> Register
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-mic-fill text-primary" style="font-size: 2.5rem;"></i>
+                </div>
+                <h3>Upload Audio</h3>
+                <p class="card-text">Easily upload your audio files in various formats including MP3, WAV, and more.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-robot text-primary" style="font-size: 2.5rem;"></i>
+                </div>
+                <h3>AI-Powered</h3>
+                <p class="card-text">Our advanced AI technology provides accurate transcriptions in multiple languages.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-file-earmark-text text-primary" style="font-size: 2.5rem;"></i>
+                </div>
+                <h3>Download & Share</h3>
+                <p class="card-text">Download your transcriptions as text files or share them with others.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

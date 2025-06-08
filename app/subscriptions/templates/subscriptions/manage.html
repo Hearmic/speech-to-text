@@ -1,0 +1,290 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Subscription - Speech to Text{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">Your Subscription</h2>
+                </div>
+                <div class="card-body">
+                    {% if subscription %}
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h3 class="h5">{{ subscription.plan.name }} Plan</h3>
+                                <p class="text-muted mb-0">
+                                    {% if subscription.is_trialing %}
+                                        Trial ends {{ subscription.trial_end_date|date:"F j, Y" }}
+                                    {% else %}
+                                        {% if subscription.is_canceled %}
+                                            Expires {{ subscription.current_period_end|date:"F j, Y" }}
+                                        {% else %}
+                                            Next billing date: {{ subscription.current_period_end|date:"F j, Y" }}
+                                        {% endif %}
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="col-md-6 text-md-end">
+                                <div class="h4 mb-0">
+                                    ${{ subscription.plan.price_monthly }}
+                                    <span class="text-muted">/ month</span>
+                                </div>
+                                {% if subscription.plan.price_yearly %}
+                                <div class="text-muted small">
+                                    or ${{ subscription.plan.price_yearly }} billed annually
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="border-top border-bottom py-4 my-4">
+                            <h4 class="h6 text-uppercase text-muted mb-3">Plan Features</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-success me-2"></i>
+                                            {{ subscription.plan.max_audio_minutes }} minutes per audio file
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas {% if subscription.plan.max_files_per_month > 0 %}fa-check text-success{% else %}fa-times text-muted{% endif %} me-2"></i>
+                                            {% if subscription.plan.max_files_per_month > 0 %}
+                                                {{ subscription.plan.max_files_per_month }} files per month
+                                            {% else %}
+                                                Unlimited files
+                                            {% endif %}
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <i class="fas {% if subscription.plan.supports_api %}fa-check text-success{% else %}fa-times text-muted{% endif %} me-2"></i>
+                                            API Access
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas {% if not subscription.plan.has_ads %}fa-check text-success{% else %}fa-times text-muted{% endif %} me-2"></i>
+                                            Ad-free Experience
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                {% if subscription.is_canceled %}
+                                    <p class="text-danger mb-0">Your subscription will be canceled on {{ subscription.current_period_end|date:"F j, Y" }}</p>
+                                {% else %}
+                                    <p class="text-success mb-0">Your subscription is active</p>
+                                {% endif %}
+                            </div>
+                            <div>
+                                {% if not subscription.is_canceled %}
+                                <button type="button" class="btn btn-outline-danger me-2" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                                    Cancel Subscription
+                                </button>
+                                {% endif %}
+                                <a href="{% url 'subscriptions:plans' %}" class="btn btn-primary">
+                                    Change Plan
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Cancel Subscription Modal -->
+                        <div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Cancel Subscription</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>Are you sure you want to cancel your subscription?</p>
+                                        <p class="mb-0">You'll continue to have access to premium features until the end of your current billing period on {{ subscription.current_period_end|date:"F j, Y" }}.</p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Subscription</button>
+                                        <form action="{% url 'subscriptions:cancel' %}" method="post" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-danger">Cancel Subscription</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-gem fa-4x text-muted mb-3"></i>
+                            <h3>No Active Subscription</h3>
+                            <p class="text-muted mb-4">You don't have an active subscription. Choose a plan to get started.</p>
+                            <a href="{% url 'subscriptions:plans' %}" class="btn btn-primary">View Plans</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if subscription and not subscription.is_canceled %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">Payment Method</h3>
+                </div>
+                <div class="card-body">
+                    {% if payment_method %}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fab fa-cc-{{ payment_method.brand|lower }} fa-2x me-2"></i>
+                                <span class="h5 mb-0">•••• {{ payment_method.last4 }}</span>
+                                <span class="text-muted ms-2">Expires {{ payment_method.exp_month }}/{{ payment_method.exp_year }}</span>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#updatePaymentMethodModal">
+                                Update
+                            </button>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No payment method on file.</p>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updatePaymentMethodModal">
+                            Add Payment Method
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Update Payment Method Modal -->
+            <div class="modal fade" id="updatePaymentMethodModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">{% if payment_method %}Update{% else %}Add{% endif %} Payment Method</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="card-element" class="mb-3">
+                                <!-- A Stripe Element will be inserted here. -->
+                            </div>
+                            <div id="card-errors" class="alert alert-danger d-none" role="alert"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button id="submit-payment-method" class="btn btn-primary">
+                                <span id="submit-payment-method-text">Save</span>
+                                <span id="submit-payment-method-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if invoices %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">Billing History</h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for invoice in invoices %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ invoice.plan_name }}</h6>
+                                    <small class="text-muted">{{ invoice.date|date:"F j, Y" }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="h6 mb-0">${{ invoice.amount_paid|floatformat:2 }}</div>
+                                    <span class="badge bg-{{ invoice.status_color }}">{{ invoice.status_display }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if subscription and not subscription.is_canceled %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const stripe = Stripe('{{ STRIPE_PUBLIC_KEY }}');
+        const elements = stripe.elements();
+        const card = elements.create('card');
+        
+        card.mount('#card-element');
+        
+        const form = document.getElementById('update-payment-method-form');
+        const submitButton = document.getElementById('submit-payment-method');
+        const submitButtonText = document.getElementById('submit-payment-method-text');
+        const submitButtonSpinner = document.getElementById('submit-payment-method-spinner');
+        const errorElement = document.getElementById('card-errors');
+        
+        card.on('change', function(event) {
+            if (event.error) {
+                errorElement.textContent = event.error.message;
+                errorElement.classList.remove('d-none');
+            } else {
+                errorElement.textContent = '';
+                errorElement.classList.add('d-none');
+            }
+        });
+        
+        submitButton.addEventListener('click', async function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            submitButton.disabled = true;
+            submitButtonText.textContent = 'Processing...';
+            submitButtonSpinner.classList.remove('d-none');
+            
+            const { setupIntent, error } = await stripe.confirmCardSetup(
+                '{{ client_secret }}',
+                {
+                    payment_method: {
+                        card: card,
+                        billing_details: {
+                            name: '{{ user.get_full_name|default:user.email }}',
+                        },
+                    },
+                }
+            );
+            
+            if (error) {
+                errorElement.textContent = error.message;
+                errorElement.classList.remove('d-none');
+                submitButton.disabled = false;
+                submitButtonText.textContent = 'Save';
+                submitButtonSpinner.classList.add('d-none');
+            } else {
+                // Submit the form with the payment method ID
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = '{% url "subscriptions:update_payment_method" %}';
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = '{{ csrf_token }}';
+                
+                const paymentMethodInput = document.createElement('input');
+                paymentMethodInput.type = 'hidden';
+                paymentMethodInput.name = 'payment_method_id';
+                paymentMethodInput.value = setupIntent.payment_method;
+                
+                form.appendChild(csrfInput);
+                form.appendChild(paymentMethodInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}

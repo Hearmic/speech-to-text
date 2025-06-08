@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Subscription Plans - Speech to Text{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 mb-3">Choose Your Plan</h1>
+        <p class="lead text-muted">Select the plan that works best for your needs</p>
+        
+        <!-- Billing Toggle -->
+        <div class="d-flex justify-content-center mb-4">
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="billing" id="monthly" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="monthly">Monthly Billing</label>
+                
+                <input type="radio" class="btn-check" name="billing" id="yearly" autocomplete="off">
+                <label class="btn btn-outline-primary" for="yearly">
+                    Yearly Billing <span class="badge bg-success">Save 20%</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for plan in plans %}
+        <div class="col">
+            <div class="card h-100 {% if plan.is_popular %}border-primary border-2{% endif %}">
+                {% if plan.is_popular %}
+                <div class="card-header bg-primary text-white text-center py-2">
+                    <span class="badge bg-warning">Most Popular</span>
+                </div>
+                {% endif %}
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ plan.name }}</h3>
+                    <div class="mb-4">
+                        <span class="display-4 fw-bold monthly-price">${{ plan.price_monthly }}</span>
+                        <span class="display-4 fw-bold yearly-price d-none">${{ plan.price_yearly }}</span>
+                        <span class="text-muted">/ <span class="billing-period">month</span></span>
+                        {% if plan.price_yearly %}
+                        <div class="text-muted small mt-1">
+                            <span class="yearly-savings">Save ${{ plan.yearly_savings }} annually</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <p class="card-text">{{ plan.description }}</p>
+                    
+                    <hr>
+                    
+                    <ul class="list-unstyled text-start mb-4">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            {{ plan.max_audio_minutes }} minutes per audio file
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas {% if plan.max_files_per_month > 0 %}fa-check text-success{% else %}fa-times text-muted{% endif %} me-2"></i>
+                            {% if plan.max_files_per_month > 0 %}
+                                {{ plan.max_files_per_month }} files per month
+                            {% else %}
+                                Unlimited files
+                            {% endif %}
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas {% if plan.supports_api %}fa-check text-success{% else %}fa-times text-muted{% endif %} me-2"></i>
+                            API Access
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas {% if not plan.has_ads %}fa-check text-success{% else %}fa-times text-muted{% endif %} me-2"></i>
+                            Ad-free Experience
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas {% if plan.can_download %}fa-check text-success{% else %}fa-times text-muted{% endif %} me-2"></i>
+                            Download Transcripts
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-{{ plan.priority|stringformat:'s' }} text-primary me-2"></i>
+                            Priority {{ plan.priority }} Processing
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-transparent border-0 pb-4">
+                    {% if user.is_authenticated and user.subscription == plan %}
+                        <button class="btn btn-outline-primary w-100" disabled>Current Plan</button>
+                    {% else %}
+                        <a href="{% url 'subscriptions:checkout' plan.slug %}" class="btn btn-primary w-100">
+                            {% if plan.is_free %}Get Started{% else %}Choose Plan{% endif %}
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">Frequently Asked Questions</h3>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="faqAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                    Can I change my plan later?
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Yes, you can upgrade or downgrade your plan at any time. When you upgrade, you'll be charged a prorated amount for the remaining days in your billing cycle.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                    Is there a free trial available?
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Yes, we offer a free plan with limited features. You can also start a 7-day free trial of any paid plan to test all the premium features.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                    What payment methods do you accept?
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    We accept all major credit cards including Visa, Mastercard, American Express, and Discover. We also support payments through PayPal.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const monthlyBtn = document.getElementById('monthly');
+        const yearlyBtn = document.getElementById('yearly');
+        const monthlyPrices = document.querySelectorAll('.monthly-price');
+        const yearlyPrices = document.querySelectorAll('.yearly-price');
+        const billingPeriods = document.querySelectorAll('.billing-period');
+        const yearlySavings = document.querySelectorAll('.yearly-savings');
+        
+        monthlyBtn.addEventListener('change', toggleBilling);
+        yearlyBtn.addEventListener('change', toggleBilling);
+        
+        function toggleBilling() {
+            if (yearlyBtn.checked) {
+                monthlyPrices.forEach(el => el.classList.add('d-none'));
+                yearlyPrices.forEach(el => el.classList.remove('d-none'));
+                billingPeriods.forEach(el => el.textContent = 'year');
+                yearlySavings.forEach(el => el.classList.remove('d-none'));
+            } else {
+                monthlyPrices.forEach(el => el.classList.remove('d-none'));
+                yearlyPrices.forEach(el => el.classList.add('d-none'));
+                billingPeriods.forEach(el => el.textContent = 'month');
+                yearlySavings.forEach(el => el.classList.add('d-none'));
+            }
+        }
+    });
+</script>
+{% endblock %}

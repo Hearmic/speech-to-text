@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile - Speech to Text{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">My Profile</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" value="{{ user.email }}" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" value="{{ user.username }}" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="subscription" class="form-label">Subscription Plan</label>
+                            <input type="text" class="form-control" id="subscription" 
+                                   value="{{ user.subscription.name|default:'Free' }}" disabled>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'account_change_password' %}" class="btn btn-outline-primary">
+                                Change Password
+                            </a>
+                            <button type="submit" class="btn btn-primary">Update Profile</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

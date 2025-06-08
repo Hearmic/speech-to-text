@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Upload Audio - Speech to Text{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dropzone {
+        border: 2px dashed #dee2e6;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .dropzone:hover {
+        border-color: #0d6efd;
+        background-color: #f8f9fa;
+    }
+    .dropzone.dragover {
+        border-color: #0d6efd;
+        background-color: #e9ecef;
+    }
+    #fileInput {
+        display: none;
+    }
+    .file-info {
+        margin-top: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">Upload Audio File</h2>
+                </div>
+                <div class="card-body">
+                    <form id="uploadForm" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div id="dropzone" class="dropzone mb-3">
+                            <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-muted"></i>
+                            <h5>Drag & drop your audio file here</h5>
+                            <p class="text-muted">or</p>
+                            <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
+                                Select File
+                            </button>
+                            <input type="file" id="fileInput" name="audio_file" accept=".mp3,.wav,.m4a,.ogg,.flac,.mp4,.mov" required>
+                            <div class="text-muted mt-2">Allowed formats: MP3, WAV, M4A, OGG, FLAC, MP4, MOV</div>
+                            {% if form.errors %}
+                                <div class="alert alert-danger mt-3">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <div>{{ error }}</div>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div id="fileInfo" class="file-info"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="language" class="form-label">Language</label>
+                            <select class="form-select" id="language" name="language" required>
+                                <option value="" selected disabled>Select language</option>
+                                <option value="en">English</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                                <option value="de">German</option>
+                                <option value="it">Italian</option>
+                                <option value="pt">Portuguese</option>
+                                <option value="ru">Russian</option>
+                                <option value="zh">Chinese</option>
+                                <option value="ja">Japanese</option>
+                                <option value="ko">Korean</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="translation" name="translation">
+                            <label class="form-check-label" for="translation">
+                                Translate to English (if not already)
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+                            <span id="submitText">Transcribe Audio</span>
+                            <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">Tips for Best Results</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li>Use high-quality audio with minimal background noise</li>
+                        <li>Speak clearly and at a moderate pace</li>
+                        <li>Files should be in MP3, WAV, or M4A format</li>
+                        <li>Maximum file size: {{ max_file_size|default:"50" }}MB</li>
+                        <li>Maximum duration: {{ max_duration|default:"30" }} minutes for free users</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const form = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        const spinner = document.getElementById('spinner');
+        
+        // Handle drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropzone.classList.add('dragover');
+        }
+        
+        function unhighlight() {
+            dropzone.classList.remove('dragover');
+        }
+        
+        // Handle dropped files
+        dropzone.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+        
+        // Handle file input change
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+        
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                fileInput.files = files;
+                
+                // Display file info
+                const fileSize = (file.size / (1024 * 1024)).toFixed(2); // Convert to MB
+                fileInfo.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-file-audio me-2"></i>
+                        <strong>${file.name}</strong> (${fileSize} MB)
+                    </div>
+                `;
+            }
+        }
+        
+        // Form submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitText.textContent = 'Processing...';
+            spinner.classList.remove('d-none');
+            
+            // Submit the form
+            const formData = new FormData(form);
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error occurred'));
+                    resetForm();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while uploading the file');
+                resetForm();
+            });
+        });
+        
+        function resetForm() {
+            submitBtn.disabled = false;
+            submitText.textContent = 'Transcribe Audio';
+            spinner.classList.add('d-none');
+        }
+    });
+</script>
+{% endblock %}

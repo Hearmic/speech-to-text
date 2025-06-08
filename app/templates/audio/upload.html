@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Upload Audio - Speech to Text{% endblock %}
+
+{% block content %}
+<!-- Debug Info (remove in production) -->
+<div class="alert alert-info">
+    <strong>Debug Info:</strong>
+    <div>User: {{ debug_user|default:"None" }}</div>
+    <div>Is Authenticated: {{ debug_info.is_authenticated|yesno:"Yes,No" }}</div>
+    <div>Has Subscription: {{ debug_info.has_subscription|yesno:"Yes,No" }}</div>
+    <div>User Attributes: {{ debug_info.user_attrs|join:", "|truncatechars:100 }}</div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Upload Audio File</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="audio-upload-form">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_title" class="form-label">Title</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.title.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_audio_file" class="form-label">Audio File</label>
+                        {{ form.audio_file }}
+                        {% if form.audio_file.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.audio_file.errors.0 }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Supported formats: .mp3, .wav, .m4a, .ogg (max 25MB)</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_language" class="form-label">Language</label>
+                            {{ form.language }}
+                            {% if form.language.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.language.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Select the audio language for better accuracy</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_model" class="form-label">
+                                {{ form.model.label }}
+                                <i class="bi bi-info-circle" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" 
+                                   title="Larger models are more accurate but slower. Your subscription determines which models are available.">
+                                </i>
+                            </label>
+                            {{ form.model }}
+                            <div id="model-warning" class="mt-1"></div>
+                            {% if form.model.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.model.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <i class="bi bi-lightning-fill text-warning"></i> Faster models process quicker but are less accurate.
+                                <br>
+                                <i class="bi bi-arrow-up-right-square-fill text-success"></i> Larger models provide better accuracy but take longer.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <div id="upload-button-container">
+                            <button type="submit" class="btn btn-primary w-100 py-2" id="upload-button">
+                                <i class="bi bi-upload me-2"></i>Upload & Transcribe
+                            </button>
+                        </div>
+                        <div id="upgrade-button-container" style="display: none;">
+                            <a href="/" class="btn btn-warning w-100 py-2" id="upgrade-button">
+                                <i class="bi bi-star-fill me-2"></i>Upgrade Plan for This Model
+                            </a>
+                        </div>
+                        <a href="{% url 'audio:audio_list' %}" class="btn btn-outline-secondary w-100 py-2">
+                            <i class="bi bi-arrow-left me-2"></i>Back to List
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function checkModelAvailability() {
+    var selectedOption = $('#id_model option:selected');
+    var optionText = selectedOption.text();
+    var isUpgradeRequired = optionText.includes('(Upgrade required)');
+    
+    console.log('Selected option:', optionText);
+    console.log('Upgrade required:', isUpgradeRequired);
+    
+    if (isUpgradeRequired) {
+        console.log('Showing upgrade button');
+        $('#upload-button-container').hide();
+        $('#upgrade-button-container').show();
+        $('#model-warning').html('<div class="alert alert-warning p-2 mb-0">This model requires a higher subscription tier.</div>');
+    } else {
+        console.log('Showing upload button');
+        $('#upload-button-container').show();
+        $('#upgrade-button-container').hide();
+        $('#model-warning').empty();
+    }
+}
+
+$(document).ready(function() {
+    console.log('Document ready');
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Add Bootstrap classes to form elements
+    $('input:not([type=hidden]), select').addClass('form-control');
+    
+    // Handle file input change event to show file name
+    $('input[type="file"]').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').html(fileName || 'Choose file');
+    });
+    
+    // Show model info when hovering over the select
+    $('#id_model').on('mouseenter', function() {
+        $(this).next('.tooltip').tooltip('show');
+    }).on('mouseleave', function() {
+        $(this).next('.tooltip').tooltip('hide');
+    });
+    
+    // Check model availability when page loads
+    checkModelAvailability();
+    
+    // Check model availability when selection changes
+    $('#id_model').on('change', function() {
+        console.log('Model selection changed');
+        checkModelAvailability();
+    });
+    
+    // Make the function available globally
+    window.checkModelAvailability = checkModelAvailability;
+    }
+});
+</script>
+
+<style>
+/* Style for the model selection */
+#id_model {
+    cursor: pointer;
+}
+
+/* Style for the info icon */
+.bi-info-circle {
+    color: #6c757d;
+    cursor: help;
+    margin-left: 5px;
+}
+
+/* Style for the form help text */
+.form-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+/* Style for the upload button */
+.btn-upload {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+}
+
+.btn-upload input[type=file] {
+    position: absolute;
+    opacity: 0;
+    z-index: -1;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Page Not Found - Speech to Text{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-template py-5">
+                <h1 class="display-1 text-danger">404</h1>
+                <h2 class="display-4">Page Not Found</h2>
+                <div class="error-details my-4">
+                    <p class="lead">Sorry, the page you are looking for does not exist or has been moved.</p>
+                </div>
+                <div class="error-actions mt-4">
+                    <a href="{% url 'home' %}" class="btn btn-primary btn-lg me-3">
+                        <i class="bi bi-house-door-fill"></i> Take Me Home
+                    </a>
+                    <a href="{% url 'audio:audio_list' %}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-list-ul"></i> View Transcriptions
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
