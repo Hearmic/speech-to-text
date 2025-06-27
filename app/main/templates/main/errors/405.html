@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Method Not Allowed | {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container py-5 my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-5 text-center">
+                    <div class="mb-4">
+                        <div class="bg-warning bg-opacity-10 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 120px; height: 120px;">
+                            <i class="bi bi-slash-circle text-warning" style="font-size: 4rem;"></i>
+                        </div>
+                    </div>
+                    
+                    <h1 class="display-5 fw-bold text-warning mb-3">405</h1>
+                    <h2 class="h3 mb-4">Method Not Allowed</h2>
+                    
+                    <p class="lead text-muted mb-4">
+                        The requested method is not allowed for the requested resource.
+                    </p>
+                    
+                    <div class="card bg-light border-0 mb-5">
+                        <div class="card-body text-start">
+                            <p class="mb-3">This might be because:</p>
+                            <ul class="mb-0">
+                                <li class="mb-2">
+                                    <i class="bi bi-exclamation-octagon-fill text-danger me-2"></i>
+                                    You tried to access a page with an invalid HTTP method
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-arrow-repeat text-primary me-2"></i>
+                                    The page requires a different request method
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-shield-lock text-info me-2"></i>
+                                    The action is not allowed due to security restrictions
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <a href="{% url 'main:home' %}" class="btn btn-primary px-4">
+                            <i class="bi bi-house-door me-2"></i> Go to Homepage
+                        </a>
+                        <button onclick="window.history.back()" class="btn btn-outline-secondary px-4">
+                            <i class="bi bi-arrow-left me-2"></i> Go Back
+                        </button>
+                        <a href="{{ request.path }}" class="btn btn-outline-warning px-4">
+                            <i class="bi bi-arrow-clockwise me-2"></i> Try Again
+                        </a>
+                    </div>
+                    
+                    <div class="mt-5">
+                        <p class="text-muted small mb-1">If you believe this is an error, please contact our support team:</p>
+                        <a href="mailto:{{ CONTACT_EMAIL }}" class="text-decoration-none">
+                            <i class="bi bi-envelope me-1"></i> {{ CONTACT_EMAIL }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if request.sentry and request.sentry.id %}
+<div class="container mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Error Details (For Support)</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">
+                        If you're contacting support, please include this error ID:
+                    </p>
+                    <div class="d-flex align-items-center">
+                        <code class="bg-light p-2 rounded flex-grow-1">{{ request.sentry.id }}</code>
+                        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyToClipboard('{{ request.sentry.id }}')">
+                            <i class="bi bi-clipboard me-1"></i> Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-check2 me-1"></i> Copied!';
+        button.classList.remove('btn-outline-secondary');
+        button.classList.add('btn-success');
+        
+        setTimeout(function() {
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+    }).catch(function(err) {
+        console.error('Could not copy text: ', err);
+    });
+}
+</script>
+{% endblock %}
+{% endif %}
+{% endblock %}

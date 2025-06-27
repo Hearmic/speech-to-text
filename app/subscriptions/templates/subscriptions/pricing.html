@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4">Pricing Plans</h1>
+        <p class="lead">Choose the plan that fits your needs</p>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 mb-3 text-center">
+        {% for plan in plans %}
+        <div class="col">
+            <div class="card mb-4 rounded-3 shadow-sm {% if plan.name == 'Pro' %}border-primary{% endif %}">
+                {% if plan.name == 'Pro' %}
+                <div class="card-header py-3 text-white bg-primary">
+                    <h4 class="my-0 fw-normal">{{ plan.name }}</h4>
+                </div>
+                {% else %}
+                <div class="card-header py-3">
+                    <h4 class="my-0 fw-normal">{{ plan.name }}</h4>
+                </div>
+                {% endif %}
+                <div class="card-body">
+                    <h1 class="card-title pricing-card-title">
+                        ${{ plan.price_monthly }}<small class="text-muted fw-light">/mo</small>
+                    </h1>
+                    {% if plan.price_yearly %}
+                    <p class="text-muted">or ${{ plan.price_yearly }}/year (save 16%)</p>
+                    {% endif %}
+                    <ul class="list-unstyled mt-3 mb-4">
+                        <li>{{ plan.max_audio_minutes }} minutes max audio length</li>
+                        <li>{{ plan.max_files_per_month }} files per month</li>
+                        <li>Up to {{ plan.get_max_model_size_display }} model</li>
+                        <li>{% if plan.supports_api %}API Access{% else %}No API Access{% endif %}</li>
+                        <li>{% if plan.can_download %}Download enabled{% else %}No downloads{% endif %}</li>
+                        <li>{% if plan.speaker_diarization_enabled %}Speaker diarization{% else %}No speaker diarization{% endif %}</li>
+                    </ul>
+                    <a href="{% url 'contact' %}?plan={{ plan.name }}" 
+                       class="w-100 btn btn-lg {% if plan.name == 'Pro' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        {% if plan.name == 'Free' %}Get Started{% else %}Contact Us{% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="card-title">Need a custom plan?</h3>
+                    <p class="card-text">Contact us for enterprise solutions or custom requirements.</p>
+                    <a href="{% url 'contact' %}?plan=Enterprise" class="btn btn-primary">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

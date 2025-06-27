@@ -1,0 +1,25 @@
+{% extends "main/base.html" %}
+{% load i18n %}
+
+{% block head_title %}{% trans "Sign Up" %}{% endblock %}
+
+{% block subhead %}{% trans "Create your account to get started" %}{% endblock %}
+
+{% block account_content %}
+
+<form class="signup" id="signup_form" method="post" action="{% url 'account_signup' %}">
+  {% csrf_token %}
+  {{ form.as_p }}
+  {% if redirect_field_value %}
+  <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+  {% endif %}
+  <div class="d-grid gap-2">
+    <button class="btn btn-primary" type="submit">{% trans "Sign Up" %}</button>
+  </div>
+</form>
+
+<div class="mt-4 text-center">
+  <p>{% blocktrans %}Already have an account? <a href="{{ login_url }}">Sign in</a>{% endblocktrans %}</p>
+</div>
+
+{% endblock %}

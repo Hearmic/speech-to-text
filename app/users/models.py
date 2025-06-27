@@ -53,6 +53,12 @@ class User(AbstractUser):
             return False
             
         return True
+        
+    def can_use_speaker_diarization(self):
+        """Check if the user's subscription includes speaker diarization feature"""
+        if not self.subscription:
+            return False
+        return self.subscription.speaker_diarization_enabled
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')

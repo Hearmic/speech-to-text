@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Too Many Requests | {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container py-5 my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-5 text-center">
+                    <div class="mb-4">
+                        <div class="bg-danger bg-opacity-10 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 120px; height: 120px;">
+                            <i class="bi bi-hourglass-split text-danger" style="font-size: 4rem;"></i>
+                        </div>
+                    </div>
+                    
+                    <h1 class="display-5 fw-bold text-danger mb-3">429</h1>
+                    <h2 class="h3 mb-4">Too Many Requests</h2>
+                    
+                    <p class="lead text-muted mb-4">
+                        You've sent too many requests in a short amount of time.
+                    </p>
+                    
+                    <div class="card bg-light border-0 mb-5">
+                        <div class="card-body">
+                            <p class="mb-3">This is a protective measure to prevent abuse. Please try again in a few minutes.</p>
+                            
+                            {% if retry_after %}
+                            <div class="alert alert-info d-inline-flex align-items-center">
+                                <i class="bi bi-clock-history me-2"></i>
+                                You can try again in: <span id="countdown" class="fw-bold ms-1">{{ retry_after }} seconds</span>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mt-4">
+                                <h5 class="h6 mb-3">To avoid this in the future:</h5>
+                                <ul class="text-start mb-0">
+                                    <li class="mb-2">
+                                        <i class="bi bi-arrow-repeat text-primary me-2"></i>
+                                        Slow down your requests
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="bi bi-robot text-warning me-2"></i>
+                                        Avoid automated requests or scripts
+                                    </li>
+                                    <li>
+                                        <i class="bi bi-shield-lock text-success me-2"></i>
+                                        Make sure your application respects rate limits
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <a href="{% url 'main:home' %}" class="btn btn-primary px-4">
+                            <i class="bi bi-house-door me-2"></i> Go to Homepage
+                        </a>
+                        <button id="retry-button" class="btn btn-outline-primary px-4" disabled>
+                            <i class="bi bi-arrow-clockwise me-2"></i> Try Again
+                        </button>
+                    </div>
+                    
+                    <div class="mt-5">
+                        <p class="text-muted small mb-1">If you believe this is a mistake, please contact our support team:</p>
+                        <a href="mailto:{{ CONTACT_EMAIL }}" class="text-decoration-none">
+                            <i class="bi bi-envelope me-1"></i> {{ CONTACT_EMAIL }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Countdown timer
+{% if retry_after %}
+let timeLeft = {{ retry_after }};
+const countdownElement = document.getElementById('countdown');
+const retryButton = document.getElementById('retry-button');
+
+function updateCountdown() {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    
+    countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    
+    if (timeLeft <= 0) {
+        countdownElement.textContent = 'Now';
+        retryButton.disabled = false;
+        retryButton.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i> Try Again';
+        clearInterval(timer);
+    } else {
+        timeLeft--;
+    }
+}
+
+// Start the countdown
+updateCountdown();
+const timer = setInterval(updateCountdown, 1000);
+
+// Retry button functionality
+retryButton.addEventListener('click', function() {
+    window.location.reload();
+});
+{% else %}
+// If no retry_after is provided, enable the button immediately
+document.getElementById('retry-button').disabled = false;
+{% endif %}
+</script>
+{% endblock %}
+
+{% endblock %}

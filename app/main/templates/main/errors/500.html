@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Server Error | {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container py-5 my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-5 text-center">
+                    <div class="mb-4">
+                        <div class="bg-danger bg-opacity-10 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 120px; height: 120px;">
+                            <i class="bi bi-exclamation-octagon text-danger" style="font-size: 4rem;"></i>
+                        </div>
+                    </div>
+                    
+                    <h1 class="display-5 fw-bold text-danger mb-3">500</h1>
+                    <h2 class="h3 mb-4">Server Error</h2>
+                    
+                    <p class="lead text-muted mb-5">
+                        Oops! Something went wrong on our end. Our team has been notified and we're working
+                        to fix the issue. Please try again later or contact our support team if the problem persists.
+                    </p>
+                    
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <a href="{% url 'main:home' %}" class="btn btn-primary px-4">
+                            <i class="bi bi-house-door me-2"></i> Go to Homepage
+                        </a>
+                        <a href="mailto:{{ CONTACT_EMAIL }}" class="btn btn-outline-danger px-4">
+                            <i class="bi bi-envelope me-2"></i> Contact Support
+                        </a>
+                    </div>
+                    
+                    {% if request.sentry.id %}
+                    <div class="mt-5">
+                        <p class="text-muted small mb-2">Error reference ID (please include this when contacting support):</p>
+                        <div class="bg-light p-3 rounded d-inline-block">
+                            <code class="text-danger">{{ request.sentry.id }}</code>
+                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyToClipboard('{{ request.sentry.id }}')">
+                                <i class="bi bi-clipboard me-1"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show a temporary tooltip or alert that text was copied
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-check2 me-1"></i> Copied!';
+        button.classList.remove('btn-outline-secondary');
+        button.classList.add('btn-success');
+        
+        // Reset button after 2 seconds
+        setTimeout(function() {
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+    }).catch(function(err) {
+        console.error('Could not copy text: ', err);
+    });
+}
+</script>
+{% endblock %}
+
+<style>
+/* Add any custom styles here if needed */
+</style>
+{% endblock %}

@@ -7,11 +7,32 @@ import tempfile
 import shutil
 import os.path
 import torch
+import json
 from pathlib import Path
 from celery import shared_task, chain
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
+
+# Import diarization module
+try:
+    from .diarization import SpeakerDiarizer, merge_transcription_with_diarization
+    DIARIZATION_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Failed to import diarization module: {e}")
+    DIARIZATION_AVAILABLE = False
+
+# Initialize diarizer
+diarizer = None
+if DIARIZATION_AVAILABLE:
+    try:
+        diarizer = SpeakerDiarizer()
+        if not diarizer.is_available():
+            logger.warning("Speaker diarization is not available")
+            DIARIZATION_AVAILABLE = False
+    except Exception as e:
+        logger.error(f"Failed to initialize speaker diarizer: {e}")
+        DIARIZATION_AVAILABLE = False
 
 # Make psutil and humanize optional
 try:
@@ -280,9 +301,34 @@ def process_audio_task(self, transcription_id):
         log_memory_usage("Before model loading: ")
         
         # Load the Whisper model with memory optimizations
-        model = _load_whisper_model(transcription.model_used if hasattr(transcription, 'model_used') else 'base')
+        model_name = transcription.model_used if hasattr(transcription, 'model_used') else 'base'
+        logger.info(f"Loading Whisper model: {model_name}")
+        model = _load_whisper_model(model_name)
         
+        # Update model in use
+        transcription.model_used = model_name
+        transcription.save(update_fields=['model_used'])
+        
+        # Log memory usage after loading model
         log_memory_usage("After model loading: ")
+        
+        # Check if user's subscription includes speaker diarization
+        user = transcription.user
+        run_diarization = False
+        
+        if hasattr(user, 'can_use_speaker_diarization') and callable(getattr(user, 'can_use_speaker_diarization')):
+            run_diarization = user.can_use_speaker_diarization()
+            logger.info(f"Speaker diarization enabled for user {user.id}: {run_diarization}")
+        else:
+            logger.warning("User model does not have can_use_speaker_diarization method")
+        
+        # If diarization is not available, log a warning
+        if run_diarization and not DIARIZATION_AVAILABLE:
+            logger.warning("Speaker diarization is not available. Check if pyannote.audio is installed and configured.")
+            run_diarization = False
+            
+        transcription.has_speaker_diarization = run_diarization
+        transcription.save(update_fields=['has_speaker_diarization'])
         
         try:
             # Transcribe the audio file
@@ -322,48 +368,65 @@ def process_audio_task(self, transcription_id):
                 processing_time = time.time() - start_time
                 logger.info(f"Transcription completed in {processing_time:.2f} seconds")
                 
-                # Update the transcription with the results
-                segments = result.get("segments", [])
+                transcription.text = result["text"]
+                transcription.language = result["language"]
+                transcription.duration = result["duration"]
+                transcription.word_count = len(result["text"].split())
                 
-                transcription.text = result.get("text", "")
+                # Prepare segments
+                segments = [
+                    {
+                        "start": segment["start"],
+                        "end": segment["end"],
+                        "text": segment["text"].strip(),
+                    }
+                    for segment in result["segments"]
+                ]
+                
+                # Run speaker diarization if enabled
+                if run_diarization and diarizer and diarizer.is_available():
+                    try:
+                        logger.info("Running speaker diarization...")
+                        diarization_result = diarizer.process_audio_file(audio_path)
+                        
+                        if diarization_result:
+                            # Merge transcription with diarization
+                            merged_segments = merge_transcription_with_diarization(
+                                segments, 
+                                diarization_result.segments
+                            )
+                            
+                            # Update segments with speaker information
+                            segments = merged_segments
+                            
+                            # Save speaker information
+                            transcription.speakers = diarization_result.speakers
+                            transcription.speaker_segments = diarization_result.segments
+                            
+                            logger.info(f"Identified {len(diarization_result.speakers)} speakers")
+                        else:
+                            logger.warning("Speaker diarization returned no results")
+                            
+                    except Exception as e:
+                        logger.error(f"Error during speaker diarization: {e}", exc_info=True)
+                        # Continue with transcription even if diarization fails
+                
+                # Save segments to transcription
+                transcription.segments = segments
+                
+                # Update status and save
                 transcription.status = Transcription.STATUS_COMPLETED
-                transcription.processing_time = processing_time
-                transcription.language = result.get("language", "en")
-                transcription.word_count = len(transcription.text.split()) if transcription.text else 0
+                transcription.processing_time = time.time() - start_time
+                transcription.save()
                 
-                # Save detailed segments if available
-                if segments:
-                    # Clean up segments data to be JSON serializable
-                    clean_segments = []
-                    for segment in segments:
-                        clean_segments.append({
-                            'start': segment.get('start', 0),
-                            'end': segment.get('end', 0),
-                            'text': segment.get('text', '').strip(),
-                            'words': [
-                                {
-                                    'word': word.get('word', '').strip(),
-                                    'start': word.get('start', 0),
-                                    'end': word.get('end', 0),
-                                    'probability': word.get('probability', 0)
-                                }
-                                for word in segment.get('words', []) if word.get('word', '').strip()
-                            ]
-                        })
-                    transcription.segments = clean_segments
-                
-                # Save all fields
-                update_fields = ['text', 'status', 'processing_time', 'language', 'word_count']
-                if hasattr(transcription, 'segments'):
-                    update_fields.append('segments')
-                transcription.save(update_fields=update_fields)
-                logger.info(f"Successfully saved transcription for {transcription.id}")
+                logger.info(f"Successfully processed transcription {transcription.id}")
+                logger.info(f"Processing time: {transcription.processing_time:.2f} seconds")
                 
                 # Update the audio file duration
-                # Get duration from segments if available, or calculate from audio file
-                if "segments" in result and result["segments"]:
+                if segments:
                     # Get duration from the last segment's end time
-                    audio_file.duration = result["segments"][-1]["end"]
+                    audio_file.duration = segments[-1]["end"]
+                    audio_file.save(update_fields=['duration'])
                 else:
                     # Fallback: Try to get duration using ffprobe
                     try:

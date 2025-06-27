@@ -62,6 +62,21 @@ class Transcription(models.Model):
     text = models.TextField(blank=True, null=True, help_text='Full transcription text')
     processing_time = models.FloatField(null=True, blank=True, help_text='Processing time in seconds')
     
+    # Speaker diarization
+    has_speaker_diarization = models.BooleanField(default=False, help_text='Whether speaker diarization was performed')
+    speakers = models.JSONField(
+        null=True, 
+        blank=True, 
+        help_text='List of speakers with their display names and colors',
+        default=list
+    )
+    speaker_segments = models.JSONField(
+        null=True, 
+        blank=True, 
+        help_text='Segments with speaker information',
+        default=list
+    )
+    
     # Language information
     language = models.CharField(max_length=10, default='en', help_text='Detected language code')
     language_probability = models.FloatField(null=True, blank=True, help_text='Confidence score of detected language')

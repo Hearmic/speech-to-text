@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>403 Forbidden</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#F8F9FA" x="0" y="0" width="200" height="200" rx="100"></rect>
+        <g transform="translate(50, 30)" fill="#FFC107">
+            <path d="M50,0 L90,40 L50,80 L10,40 Z" fill-opacity="0.2"></path>
+            <path d="M50,10 L83.5,43.5 L50,77 L16.5,43.5 Z" fill-opacity="0.8"></path>
+            <path d="M50,30 L63.5,43.5 L50,57 L36.5,43.5 Z" fill="#000" fill-opacity="0.3"></path>
+        </g>
+        <text font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#FFC107">
+            <tspan x="50" y="180">ACCESS FORBIDDEN</tspan>
+        </text>
+    </g>
+</svg>

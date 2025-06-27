@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}I'm a Teapot | {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container py-5 my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-5 text-center">
+                    <div class="mb-4">
+                        <div class="position-relative d-inline-block">
+                            <div class="bg-warning bg-opacity-10 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 120px; height: 120px;">
+                                <i class="bi bi-cup-hot-fill text-warning" style="font-size: 4rem;"></i>
+                            </div>
+                            <div class="position-absolute top-0 start-100 translate-middle">
+                                <span class="badge rounded-pill bg-danger">418</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h1 class="display-5 fw-bold text-warning mb-3">I'm a Teapot</h1>
+                    <h2 class="h3 mb-4">418 - I'm a teapot</h2>
+                    
+                    <p class="lead text-muted mb-4">
+                        The server refuses the attempt to brew coffee with a teapot.
+                    </p>
+                    
+                    <div class="card bg-light border-0 mb-5">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-6 mb-4 mb-md-0">
+                                    <div class="ratio ratio-16x9">
+                                        <div class="bg-light d-flex align-items-center justify-content-center rounded">
+                                            <i class="bi bi-cup-hot text-muted" style="font-size: 4rem;"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 text-md-start">
+                                    <h5 class="mb-3">What does this mean?</h5>
+                                    <p class="mb-0">
+                                        This is a reference to the Hyper Text Coffee Pot Control Protocol (HTCPCP/1.0) defined in 
+                                        <a href="https://datatracker.ietf.org/doc/html/rfc2324" target="_blank" class="text-decoration-none">RFC 2324</a>.
+                                        It's an April Fools' joke from 1998 that became an official HTTP status code.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 pt-4 border-top">
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <div class="p-3 border rounded h-100">
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-3">
+                                                    <i class="bi bi-cup-hot text-primary"></i>
+                                                </div>
+                                                <h5 class="h6 mb-0">Tea Time</h5>
+                                            </div>
+                                            <p class="small text-muted mb-0">
+                                                Why not take a short break and enjoy a nice cup of tea?
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 border rounded h-100">
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div class="bg-info bg-opacity-10 p-2 rounded-circle me-3">
+                                                    <i class="bi bi-lightbulb text-info"></i>
+                                                </div>
+                                                <h5 class="h6 mb-0">Did You Know?</h5>
+                                            </div>
+                                            <p class="small text-muted mb-0">
+                                                This status code was originally defined in 1998 as part of an April Fools' joke.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-warning mt-4">
+                                <div class="d-flex">
+                                    <i class="bi bi-info-circle-fill me-3 mt-1"></i>
+                                    <div>
+                                        <p class="mb-0">
+                                            <strong>Note:</strong> This is a real HTTP status code (418) that can be used by web applications. 
+                                            It's often used for fun or to indicate that a request was made to a teapot instead of a coffee pot.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <a href="{% url 'main:home' %}" class="btn btn-primary px-4">
+                            <i class="bi bi-house-door me-2"></i> Back to Homepage
+                        </a>
+                        <button onclick="window.history.back()" class="btn btn-outline-secondary px-4">
+                            <i class="bi bi-arrow-left me-2"></i> Go Back
+                        </button>
+                        <a href="https://en.wikipedia.org/wiki/Hyper_Text_Coffee_Pot_Control_Protocol" target="_blank" class="btn btn-outline-warning px-4">
+                            <i class="bi bi-info-circle me-2"></i> Learn More
+                        </a>
+                    </div>
+                    
+                    <div class="mt-5">
+                        <p class="text-muted small mb-1">Or enjoy these tea-related resources while you're here:</p>
+                        <div class="d-flex flex-wrap justify-content-center gap-3">
+                            <a href="https://en.wikipedia.org/wiki/Tea" target="_blank" class="text-decoration-none">
+                                <i class="bi bi-cup-hot me-1"></i> Tea on Wikipedia
+                            </a>
+                            <span class="text-muted">•</span>
+                            <a href="https://www.youtube.com/watch?v=zBlzdVvFg-w" target="_blank" class="text-decoration-none">
+                                <i class="bi bi-youtube me-1 text-danger"></i> How to Make Tea
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tea Facts Modal -->
+<div class="modal fade" id="teaFactsModal" tabindex="-1" aria-labelledby="teaFactsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="teaFactsModalLabel">Tea Time Facts</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-4">
+                    <h6 class="mb-3">Did you know?</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bi bi-cup-hot text-warning me-2"></i>
+                            Tea is the second most consumed beverage in the world, after water.
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-cup-hot text-warning me-2"></i>
+                            All tea comes from the same plant: Camellia sinensis.
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-cup-hot text-warning me-2"></i>
+                            The difference between tea types comes from how they are processed.
+                        </li>
+                        <li>
+                            <i class="bi bi-cup-hot text-warning me-2"></i>
+                            The most expensive tea in the world can cost up to $1.2 million per kilogram.
+                        </li>
+                    </ul>
+                </div>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    The 418 status code is a reference to the Hyper Text Coffee Pot Control Protocol (HTCPCP/1.0).
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="https://en.wikipedia.org/wiki/Tea_culture" target="_blank" class="btn btn-warning">
+                    <i class="bi bi-book me-1"></i> Learn More
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Initialize Bootstrap components
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+});
+
+// Show tea facts modal after a delay
+setTimeout(function() {
+    var teaFactsModal = new bootstrap.Modal(document.getElementById('teaFactsModal'), {
+        keyboard: false
+    });
+    teaFactsModal.show();
+}, 3000);
+
+// Tea animation
+const teapot = document.querySelector('.bi-cup-hot');
+if (teapot) {
+    teapot.addEventListener('mouseover', function() {
+        this.classList.add('animate__animated', 'animate__tada');
+        
+        // Remove the animation class after it completes
+        this.addEventListener('animationend', function() {
+            this.classList.remove('animate__animated', 'animate__tada');
+        }, { once: true });
+    });
+}
+</script>
+
+<!-- Animate.css for animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+<style>
+/* Custom styles for the teapot icon */
+.bi-cup-hot {
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.bi-cup-hot:hover {
+    transform: scale(1.1);
+}
+
+/* Custom badge style for the 418 badge */
+.badge.bg-danger {
+    font-size: 0.8rem;
+    padding: 0.35em 0.65em;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Custom styles for the card */
+.card {
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1) !important;
+}
+</style>
+{% endblock %}
+
+{% endblock %}

@@ -40,6 +40,13 @@ x-django-env: &django-env
   # Development specific (can be overridden in .env)
   PYTHONFAULTHANDLER: ${PYTHONFAULTHANDLER:-0}
   C_FORCE_ROOT: ${C_FORCE_ROOT:-1}
+  
+  # Google OAuth2
+  GOOGLE_OAUTH2_CLIENT_ID: ${GOOGLE_OAUTH2_CLIENT_ID:-}
+  GOOGLE_OAUTH2_SECRET: ${GOOGLE_OAUTH2_SECRET:-}
+  
+  # Site URL (for OAuth callbacks)
+  SITE_URL: ${SITE_URL:-http://localhost:8000}
 
 services:
   # Nginx reverse proxy (production only)

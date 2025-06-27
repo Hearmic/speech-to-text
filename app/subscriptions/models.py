@@ -66,6 +66,10 @@ class SubscriptionPlan(models.Model):
     supports_api = models.BooleanField(default=False)
     has_ads = models.BooleanField(default=True)
     can_download = models.BooleanField(default=False)
+    speaker_diarization_enabled = models.BooleanField(
+        default=False,
+        help_text='Whether this plan includes speaker diarization feature'
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
