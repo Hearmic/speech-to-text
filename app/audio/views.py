@@ -18,137 +18,175 @@ from django.views.decorators.http import require_GET
 from django.http import HttpResponse
 from django.conf import settings
 
-from .models import Transcription as Audio, AudioFile
+import logging
+from django.db import transaction
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.http import JsonResponse, HttpResponseBadRequest, Http404
+from django.core.files.storage import default_storage
+from django.conf import settings
+from pathlib import Path
+
+from .models import Transcription, MediaFile
 from .forms import AudioUploadForm
 
+logger = logging.getLogger(__name__)
+
 def get_file_type(file_name):
-    """Determine if the file is a video or audio based on its extension"""
-    video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm']
+    """
+    Determine if the file is a video or audio based on its extension
+    Returns: 'video', 'audio', or None if not supported
+    """
+    video_extensions = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v', '.3gp'}
+    audio_extensions = {'.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.wma', '.aiff'}
+    
     ext = Path(file_name).suffix.lower()
-    return 'video' if ext in video_extensions else 'audio'
+    if ext in video_extensions:
+        return 'video'
+    elif ext in audio_extensions:
+        return 'audio'
+    return None
 
 @login_required
 def upload_audio(request):
+    """Handle file uploads for both audio and video files"""
     if request.method == 'POST':
         form = AudioUploadForm(request.POST, request.FILES, user=request.user)
-        # The form's clean method will validate the model selection
+        
         if form.is_valid():
             try:
-                transcription = form.save(commit=False)
-                transcription.user = request.user
-                
-                # Get the uploaded file
-                uploaded_file = request.FILES.get('audio_file')
-                if not uploaded_file:
-                    messages.error(request, 'No file was uploaded.')
-                    return render(request, 'audio/upload.html', {'form': form})
-                
-                # Check file size (limit to 500MB)
-                max_size = 500 * 1024 * 1024  # 500MB
-                if uploaded_file.size > max_size:
-                    messages.error(request, 'File is too large. Maximum allowed size is 500MB.')
-                    return render(request, 'audio/upload.html', {'form': form})
-                
-                # Check file type
-                file_type = get_file_type(uploaded_file.name)
-                
-                # Save the transcription first
-                transcription.save()
-                
-                try:
-                    # Save the file to the media directory
-                    file_path = os.path.join('audio_uploads', str(request.user.id), uploaded_file.name)
-                    file_path = default_storage.save(file_path, ContentFile(uploaded_file.read()))
+                # Start transaction to ensure data consistency
+                with transaction.atomic():
+                    # Create the transcription record
+                    transcription = form.save(commit=False)
+                    transcription.user = request.user
+                    transcription.save()
                     
-                    # Create AudioFile instance
-                    audio_file = AudioFile(
+                    # Get the uploaded file
+                    uploaded_file = request.FILES.get('audio_file')
+                    if not uploaded_file:
+                        messages.error(request, 'No file was uploaded.')
+                        return render(request, 'audio/upload.html', {'form': form})
+                    
+                    # Check file type
+                    file_type = get_file_type(uploaded_file.name)
+                    if not file_type:
+                        messages.error(request, 'Unsupported file format. Please upload a valid audio or video file.')
+                        return render(request, 'audio/upload.html', {'form': form})
+                    
+                    # Check file size based on subscription (default max 500MB)
+                    max_size = 500 * 1024 * 1024  # 500MB default
+                    if hasattr(request.user, 'subscription') and request.user.subscription:
+                        max_size = request.user.subscription.max_file_size_mb * 1024 * 1024
+                    
+                    if uploaded_file.size > max_size:
+                        messages.error(
+                            request, 
+                            f'File is too large. Maximum allowed size is {max_size // (1024 * 1024)}MB.'
+                        )
+                        return render(request, 'audio/upload.html', {'form': form})
+                    
+                    # Create media file record
+                    media_file = MediaFile(
                         transcription=transcription,
-                        file=file_path,
-                        duration=0,  # Will be updated during processing
-                        file_size=uploaded_file.size
+                        original_file=uploaded_file,
+                        is_video=(file_type == 'video')
                     )
-                    audio_file.save()
+                    media_file.save()
                     
-                    # Start processing the file
+                    # If it's a video, extract audio asynchronously
+                    if media_file.is_video:
+                        from .tasks import extract_audio_task
+                        extract_audio_task.delay(media_file.id)
+                    
+                    # Start audio processing
                     transcription.process_audio()
                     
-                    messages.success(
-                        request, 
-                        f'Your {file_type} file has been uploaded and is being processed. '
-                        'You will be notified when processing is complete.'
-                    )
-                    return redirect('audio:audio_list')
-                    
-                except Exception as e:
-                    # Clean up if something goes wrong
-                    if 'audio_file' in locals() and audio_file.file:
-                        if default_storage.exists(audio_file.file.name):
-                            default_storage.delete(audio_file.file.name)
-                    transcription.delete()
-                    raise e
+                    messages.success(request, 'Your file has been uploaded and is being processed.')
+                    return redirect('audio:detail', pk=transcription.pk)
                     
             except Exception as e:
-                messages.error(
-                    request, 
-                    f'An error occurred while processing your {file_type} file. Please try again.'
-                )
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error processing {file_type} file: {str(e)}", exc_info=True)
-                return render(request, 'audio/upload.html', {'form': form})
+                logger.error(f"Error processing upload: {str(e)}", exc_info=True)
+                messages.error(request, 'An error occurred while processing your upload. Please try again.')
+                
+                # Clean up any partially created objects
+                if 'transcription' in locals() and transcription.pk:
+                    if hasattr(transcription, 'media_file'):
+                        transcription.media_file.delete()
+                    transcription.delete()
+                    
+        else:
+            # Form validation failed
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
     else:
-        print(f"Creating form for user: {request.user}")
         form = AudioUploadForm(user=request.user)
-        print(f"Form created with user: {request.user}")
     
-    # Debug info
-    debug_info = {
-        'user': str(request.user),
-        'is_authenticated': request.user.is_authenticated,
-        'has_subscription': hasattr(request.user, 'subscription') and request.user.subscription is not None,
-        'user_attrs': dir(request.user) if hasattr(request.user, '__dict__') else 'No __dict__'
-    }
+    # Get max file size from user's subscription or use default
+    max_size_mb = 500  # Default max size in MB
+    if hasattr(request.user, 'subscription') and request.user.subscription:
+        max_size_mb = request.user.subscription.max_file_size_mb
     
     return render(request, 'audio/upload.html', {
-        'form': form, 
-        'debug_user': str(request.user),
-        'debug_info': debug_info
+        'form': form,
+        'max_size_mb': max_size_mb,
     })
 
 @login_required
 def audio_list(request):
-    audios = Audio.objects.select_related('audio_file').filter(user=request.user).order_by('-created_at')
-    return render(request, 'audio/list.html', {'audios': audios})
+    """Display list of user's transcriptions"""
+    transcriptions = Transcription.objects.filter(user=request.user).select_related('media_file').order_by('-created_at')
+    return render(request, 'audio/audio_list.html', {
+        'audios': transcriptions,
+    })
 
 @login_required
 def audio_detail(request, pk):
-    audio = get_object_or_404(Audio, pk=pk, user=request.user)
-    file_type = 'video' if audio.audio_file and any(ext in str(audio.audio_file.file).lower() for ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm']) else 'audio'
-    return render(request, 'audio/detail.html', {
+    """Display details of a specific transcription"""
+    audio = get_object_or_404(Transcription.objects.select_related('media_file'), pk=pk, user=request.user)
+    
+    # Check if the transcription is completed and has text
+    if audio.status == 'completed' and not audio.text:
+        audio.status = 'failed'
+        audio.save(update_fields=['status'])
+        messages.warning(request, 'Transcription completed but no text was generated.')
+    
+    # Get the appropriate file for playback (original audio or extracted audio from video)
+    media_file = getattr(audio, 'media_file', None)
+    playback_file = None
+    if media_file:
+        playback_file = media_file.get_audio_file()
+    
+    return render(request, 'audio/audio_detail.html', {
         'audio': audio,
-        'file_type': file_type,
-        'is_video': file_type == 'video',
-        'MEDIA_URL': settings.MEDIA_URL  # Add MEDIA_URL to the template context
+        'media_file': media_file,
+        'playback_file': playback_file,
     })
 
 @login_required
 @require_http_methods(['DELETE'])
 def delete_audio(request, pk):
-    audio = get_object_or_404(Audio, pk=pk, user=request.user)
+    """Delete a transcription and its associated media files"""
+    audio = get_object_or_404(Transcription, pk=pk, user=request.user)
     
-    # Delete the audio file from storage
-    if audio.audio_file:
-        if os.path.isfile(audio.audio_file.path):
-            os.remove(audio.audio_file.path)
+    if request.method == 'POST':
+        try:
+            # This will delete the transcription and associated media files through model's delete method
+            audio.delete()
+            messages.success(request, 'Transcription and associated media files deleted successfully.')
+            return redirect('audio:list')
+        except Exception as e:
+            logger.error(f"Error deleting transcription {pk}: {str(e)}", exc_info=True)
+            messages.error(request, 'An error occurred while deleting the transcription.')
+            return redirect('audio:detail', pk=pk)
     
-    # Delete the database record
-    audio.delete()
-    
-    messages.success(request, 'Audio file has been deleted.')
-    return JsonResponse({'status': 'success'})
+    return render(request, 'audio/audio_confirm_delete.html', {'audio': audio})
 
 @login_required
 def check_audio_status(request, pk):
-    audio = get_object_or_404(Audio, pk=pk, user=request.user)
+    audio = get_object_or_404(Transcription, pk=pk, user=request.user)
     return JsonResponse({
         'status': audio.status,
         'text': audio.text or '',
@@ -157,18 +195,42 @@ def check_audio_status(request, pk):
 
 @require_GET
 def check_model_availability(request):
-    """HTMX endpoint to check if a model is available for the user's subscription."""
-    if not request.user.is_authenticated or not hasattr(request.user, 'subscription'):
-        return HttpResponse(status=200)  # Default to base model for non-authenticated users
+    """
+    HTMX endpoint to check if a model is available for the user's subscription.
+    Returns HTML response indicating model availability.
+    """
+    model_name = request.GET.get('model_name')
+    if not model_name:
+        return HttpResponseBadRequest("Model name is required")
     
-    model = request.GET.get('model', 'base')
-    available_models = request.user.subscription.plan.available_models
+    # Default to True if user is not authenticated (will be handled by login_required in the form)
+    if not request.user.is_authenticated:
+        return HttpResponse("<div class='text-success'><i class='bi bi-check-circle-fill'></i> Available</div>")
     
-    if model not in available_models:
-        return HttpResponse(
-            '<div class="alert alert-warning small p-2 mb-0">' \
-            '<i class="bi bi-exclamation-triangle-fill me-1"></i> ' \
-            'This model requires a higher subscription tier.' \
-            '</div>'
-        )
-    return HttpResponse('')
+    # Get the user's subscription tier
+    subscription = getattr(request.user, 'subscription', None)
+    
+    # Map model names to their required subscription tiers
+    model_requirements = {
+        'tiny': 'free',
+        'base': 'free',
+        'small': 'basic',
+        'medium': 'pro',
+        'large': 'enterprise',
+    }
+    
+    required_tier = model_requirements.get(model_name.lower(), 'enterprise')
+    
+    # If no subscription, only allow free models
+    if not subscription or subscription.tier == 'free':
+        is_available = required_tier == 'free'
+    # For paid subscriptions, check if the model is allowed
+    else:
+        # This is a simplified check - you might want to implement a more robust comparison
+        subscription_tiers = ['free', 'basic', 'pro', 'enterprise']
+        is_available = subscription_tiers.index(subscription.tier.lower()) >= subscription_tiers.index(required_tier)
+    
+    if is_available:
+        return HttpResponse("<div class='text-success'><i class='bi bi-check-circle-fill'></i> Available</div>")
+    else:
+        return HttpResponse(f"<div class='text-danger'><i class='bi bi-x-circle-fill'></i> Requires {required_tier.capitalize()} plan or higher</div>")

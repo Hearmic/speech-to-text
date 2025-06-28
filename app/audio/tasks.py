@@ -19,6 +19,7 @@ try:
     from .diarization import SpeakerDiarizer, merge_transcription_with_diarization
     DIARIZATION_AVAILABLE = True
 except ImportError as e:
+    logger = get_task_logger(__name__)
     logger.warning(f"Failed to import diarization module: {e}")
     DIARIZATION_AVAILABLE = False
 
@@ -70,6 +71,10 @@ except Exception as e:
 
 # Set up logging
 logger = get_task_logger(__name__)
+
+# Import models after setting up logging
+# Using local imports within functions to avoid circular imports
+# and importing at runtime when needed
 
 # Import whisper after setting up logging to catch any import errors
 try:
@@ -216,6 +221,66 @@ def convert_to_wav(input_path, is_video=False):
 @shared_task(
     bind=True,
     max_retries=3,
+    name='audio.tasks.extract_audio_task',
+    autoretry_for=(Exception,),
+    retry_backoff=60,  # Wait 60s before first retry
+    retry_backoff_max=300,  # Max 5 minutes between retries
+    retry_jitter=True,  # Add jitter to avoid thundering herd
+    soft_time_limit=1800,  # 30 minute soft time limit
+    time_limit=2100,  # 35 minute hard time limit
+    acks_late=True,  # Don't ack until task is complete
+    reject_on_worker_lost=True  # Require the worker to acknowledge task loss
+)
+def extract_audio_task(self, media_file_id):
+    """
+    Celery task to extract audio from a video file
+    """
+    logger.info(f"Starting audio extraction for media file ID: {media_file_id}")
+    
+    try:
+        # Import here to avoid circular imports
+        from .models import MediaFile, Transcription
+        
+        # Get the media file
+        media_file = MediaFile.objects.get(id=media_file_id)
+        
+        # Skip if not a video or already processed
+        if not media_file.is_video or media_file.audio_extracted:
+            logger.info(f"Skipping audio extraction for media file {media_file_id}: not a video or already processed")
+            return
+        
+        # Call the extract_audio_from_video method
+        success = media_file.extract_audio_from_video()
+        
+        if success:
+            logger.info(f"Successfully extracted audio from video {media_file_id}")
+            # Update transcription status if needed
+            transcription = media_file.transcription
+            if transcription.status == Transcription.STATUS_PENDING:
+                transcription.status = Transcription.STATUS_PROCESSING
+                transcription.save(update_fields=['status'])
+                
+                # Start the actual transcription process
+                transcription.process_audio()
+        else:
+            logger.error(f"Failed to extract audio from video {media_file_id}")
+            # Update transcription status to failed
+            transcription = media_file.transcription
+            transcription.status = Transcription.STATUS_FAILED
+            transcription.save(update_fields=['status'])
+            
+    except MediaFile.DoesNotExist:
+        logger.error(f"MediaFile {media_file_id} not found")
+        raise
+    except Exception as e:
+        logger.error(f"Error in extract_audio_task for media file {media_file_id}: {str(e)}", exc_info=True)
+        # Retry the task with exponential backoff
+        raise self.retry(exc=e, countdown=60 * self.request.retries)
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
     name='audio.tasks.process_audio_task',
     autoretry_for=(Exception,),
     retry_backoff=60,  # Wait 60s before first retry
@@ -229,19 +294,34 @@ def convert_to_wav(input_path, is_video=False):
 @profile  # Will be a no-op if memory_profiler is not installed
 def process_audio_task(self, transcription_id):
     """
-    Celery task to process audio/video file and extract text using Whisper AI
+    Celery task to process audio file and extract text using Whisper AI
     """
     logger.info(f"Starting processing for transcription ID: {transcription_id}")
     
     # Import models here to avoid circular imports
-    from .models import Transcription, AudioFile
+    from .models import Transcription
     
     temp_files = []  # To keep track of temporary files for cleanup
     
     try:
-        transcription = Transcription.objects.get(id=transcription_id)
-        logger.info(f"Processing transcription: {transcription.id} - {transcription.title}")
+        transcription = Transcription.objects.select_related('media_file').get(pk=transcription_id)
         
+        # If this is a video, make sure audio has been extracted
+        if hasattr(transcription, 'media_file') and transcription.media_file and transcription.media_file.is_video:
+            if not transcription.media_file.audio_extracted:
+                logger.error(f"Audio not yet extracted from video for transcription {transcription_id}")
+                # Try again in 10 seconds
+                raise self.retry(countdown=10)
+    except Transcription.DoesNotExist:
+        logger.error(f"Transcription {transcription_id} not found")
+        return
+        
+    # If this is a video, make sure audio has been extracted
+    if hasattr(transcription, 'media_file') and transcription.media_file and transcription.media_file.is_video:
+        if not transcription.media_file.audio_extracted:
+            logger.error(f"Audio not yet extracted from video for transcription {transcription_id}")
+            # Try again in 10 seconds
+            raise self.retry(countdown=10)
         # Update status to processing
         transcription.status = Transcription.STATUS_PROCESSING
         transcription.save(update_fields=['status'])
@@ -422,21 +502,22 @@ def process_audio_task(self, transcription_id):
                 logger.info(f"Successfully processed transcription {transcription.id}")
                 logger.info(f"Processing time: {transcription.processing_time:.2f} seconds")
                 
-                # Update the audio file duration
+                # Update the audio file duration if we have segments
                 if segments:
                     # Get duration from the last segment's end time
                     audio_file.duration = segments[-1]["end"]
-                    audio_file.save(update_fields=['duration'])
                 else:
                     # Fallback: Try to get duration using ffprobe
                     try:
                         import subprocess
+                        # Ensure path is converted to string for ffprobe
+                        audio_path_str = str(audio_path)
                         cmd = [
-                            'ffprobe', 
+                            'ffprobe',
                             '-v', 'error',
                             '-show_entries', 'format=duration',
                             '-of', 'default=noprint_wrappers=1:nokey=1',
-                            audio_path
+                            audio_path_str
                         ]
                         duration = float(subprocess.check_output(cmd).decode('utf-8').strip())
                         audio_file.duration = duration
@@ -463,11 +544,44 @@ def process_audio_task(self, transcription_id):
                 raise self.retry(exc=e, countdown=60)
                 
         except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            transcription.status = Transcription.STATUS_FAILED
-            transcription.save(update_fields=['status'])
-            raise self.retry(exc=e, countdown=60)
+            # Import here to avoid circular imports
+            from django.db import transaction
+            from django.core.exceptions import ObjectDoesNotExist
+            
+            # Handle the case where the transcription doesn't exist
+            if isinstance(e, ObjectDoesNotExist) or "does not exist" in str(e).lower():
+                logger.error(f"Transcription with id {transcription_id} does not exist")
+                return {"status": "error", "message": f"Transcription with id {transcription_id} does not exist"}
+            
+            # Log the full error for debugging
+            error_message = str(e)[:500]  # Limit error message length
+            logger.error(f"Error in process_audio_task for transcription {transcription_id}: {error_message}", exc_info=True)
+            
+            # Update status to failed if we can, using transaction for safety
+            try:
+                from .models import Transcription
+                with transaction.atomic():
+                    try:
+                        transcription = Transcription.objects.get(id=transcription_id)
+                        transcription.status = 'failed'  # Use string literal to avoid dependency
+                        transcription.text = f"Unexpected error: {error_message}"
+                        transcription.save(update_fields=['status', 'text'])
+                    except Exception as save_error:
+                        logger.error(f"Failed to update transcription status: {str(save_error)}")
+                        # If we can't update the status, we should still handle the retry logic
+            except ImportError as ie:
+                logger.error(f"Failed to import Transcription model: {str(ie)}")
+            
+            # Retry the task with exponential backoff, but not for certain errors
+            if isinstance(e, (ValueError, TypeError, AttributeError, ImportError)):
+                # Don't retry for programming errors
+                logger.error(f"Not retrying due to programming error: {str(e)}")
+                raise
+                
+            countdown = 60 * (2 ** (self.request.retries - 1))  # 1st retry: 60s, 2nd: 120s, 3rd: 240s
+            max_retry_delay = min(countdown, 300)  # Max 5 minutes delay
+            logger.warning(f"Retrying task in {max_retry_delay} seconds (attempt {self.request.retries + 1})")
+            raise self.retry(exc=e, countdown=max_retry_delay)                 
             
         finally:
             # Clean up temporary files
@@ -499,17 +613,3 @@ def process_audio_task(self, transcription_id):
                 gc.collect()
                 log_memory_usage("After cleanup: ")
         
-    except Transcription.DoesNotExist:
-        # If transcription doesn't exist, don't retry
-        return {"status": "error", "message": f"Transcription with id {transcription_id} does not exist"}
-        
-    except Exception as e:
-        # Update status to failed if we can
-        if 'transcription' in locals():
-            transcription.status = Transcription.STATUS_FAILED
-            transcription.text = f"Unexpected error: {str(e)}"
-            transcription.save(update_fields=['status', 'text'])
-        
-        # Retry the task with exponential backoff
-        countdown = 60 * (2 ** (self.request.retries - 1))  # 1st retry: 60s, 2nd: 120s, 3rd: 240s
-        raise self.retry(exc=e, countdown=min(countdown, 300))  # Max 5 minutes delay
