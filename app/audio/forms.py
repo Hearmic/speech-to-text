@@ -49,7 +49,13 @@ class AudioUploadForm(forms.ModelForm):
         # For debugging
         print(f"Initializing form for user: {self.user}")
         
-        if self.user and self.user.is_authenticated:
+        # Check if user is a superuser
+        if self.user and self.user.is_authenticated and self.user.is_superuser:
+            print(f"Superuser detected: {self.user}")
+            # Grant access to all models for superusers
+            available_models = ['tiny', 'base', 'small', 'medium', 'large']
+            max_model = 'large'
+        elif self.user and self.user.is_authenticated:
             print(f"User is authenticated: {self.user}")
             # Check if user has a subscription with the correct attributes
             if hasattr(self.user, 'subscription') and self.user.subscription and hasattr(self.user.subscription, 'plan'):
@@ -134,7 +140,11 @@ class AudioUploadForm(forms.ModelForm):
             
         selected_model = cleaned_data['model']
         
-        # Get available models based on subscription
+        # Superusers can use any model
+        if self.user and self.user.is_authenticated and self.user.is_superuser:
+            return cleaned_data
+            
+        # Get available models based on subscription for regular users
         available_models = ['tiny', 'base']  # Default for non-authenticated users
         if self.user and self.user.is_authenticated and hasattr(self.user, 'subscription'):
             try:
