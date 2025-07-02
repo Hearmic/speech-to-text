@@ -1,53 +1,205 @@
 # Speech to Text with Whisper AI
 
-A Django-based web application that provides speech-to-text functionality using OpenAI's Whisper AI, with a freemium subscription model.
+A high-performance Django-based web application that provides speech-to-text functionality using OpenAI's Whisper AI, containerized with Docker for easy deployment and scaling.
 
-## Features
+## 🚀 Features
 
-- User authentication and authorization
-- Subscription management (Free, Pro, Premium)
-- Audio file upload and processing
-- Speech-to-text conversion using Whisper AI
-- Queue prioritization based on subscription level
-- Payment processing with Stripe
-- RESTful API
+- **Containerized Development**: Full Docker support with optimized multi-stage builds
+- **Asynchronous Processing**: Celery for background task processing
+- **Scalable Architecture**: PostgreSQL database and Redis for caching and message brokering
+- **Production-Ready**: Nginx as a reverse proxy with optimized configuration
+- **Developer Friendly**: Comprehensive development setup with hot-reloading
 
-## Prerequisites
+## 🛠 Tech Stack
 
-- Docker and Docker Compose
-- Python 3.8+
-- Node.js and npm (for frontend development, if applicable)
+- **Backend**: Django 4.2+
+- **Database**: PostgreSQL 15
+- **Cache & Message Broker**: Redis 7
+- **Task Queue**: Celery with Redis
+- **Web Server**: Nginx
+- **Containerization**: Docker + Docker Compose
 
-## Getting Started
+## 🚀 Getting Started
 
-### 1. Clone the repository
+### Prerequisites
 
-```bash
-git clone <repository-url>
-cd speech-to-text
+- Docker 20.10.0+
+- Docker Compose 2.0.0+
+- Git
+
+### Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd speech-to-text
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` if you need to customize any settings.
+
+3. **Build and start the services**
+   ```bash
+   docker-compose --profile development up --build -d
+   ```
+
+4. **Apply database migrations**
+   ```bash
+   docker-compose exec web python manage.py migrate
+   ```
+
+5. **Create a superuser (optional)**
+   ```bash
+   docker-compose exec web python manage.py createsuperuser
+   ```
+
+6. **Access the application**
+   - Web interface: http://localhost:8000
+   - Admin interface: http://localhost:8000/admin
+
+## 🏗 Project Structure
+
+```
+speech-to-text/
+├── app/                    # Django project root
+│   ├── app/               # Project settings and configuration
+│   ├── main/              # Main application
+│   ├── manage.py
+│   └── requirements.txt
+├── nginx/                 # Nginx configuration
+│   └── nginx.conf
+├── .env.example           # Example environment variables
+├── docker-compose.yml     # Docker Compose configuration
+└── Dockerfile             # Dockerfile for the web service
 ```
 
-### 2. Set up environment variables
+## 🔧 Development
 
-Copy the example environment file and update the values:
+### Running the development environment
 
 ```bash
-cp .env.example .env
+docker-compose --profile development up --build -d
 ```
 
-Edit the `.env` file with your configuration.
-
-### 3. Build and start the development environment
+### Running management commands
 
 ```bash
+docker-compose exec web python manage.py <command>
+```
+
+### Accessing services
+
+- **Django Development Server**: http://localhost:8000
+- **PostgreSQL**: `localhost:5432` (default credentials in .env)
+- **Redis**: `localhost:6379`
+- **Celery Flower** (task monitoring): http://localhost:5555
+
+## 🚀 Production Deployment
+
+1. Update `.env` with production settings:
+   ```bash
+   DEBUG=0
+   SECRET_KEY=your-secure-secret-key
+   ALLOWED_HOSTS=.yourdomain.com
+   ```
+
+2. Build and start in production mode:
+   ```bash
+   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+   ```
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+# Build and start all services
 make build
 make up
+
+# Or in one command
+make dev
 ```
 
-This will start the following services:
-- Django web server on http://localhost:8000
-- PostgreSQL database
-- Redis for caching and task queue
+#### Option 2: Using Docker Compose directly
+
+```bash
+# Build and start all services
+docker-compose -f docker-compose.yml -f docker-compose.override.yml up --build -d
+
+# View logs
+docker-compose logs -f
+```
+
+### 4. Initialize the database and create a superuser
+
+```bash
+# Run database migrations
+docker-compose exec web python manage.py migrate
+
+# Create a superuser
+docker-compose exec web python manage.py createsuperuser
+```
+
+### 5. Access the application
+
+- **Django Admin**: http://localhost:8000/admin/
+- **Main Application**: http://localhost:8000/
+- **API Documentation**: http://localhost:8000/api/docs/ (if enabled)
+- **Celery Flower** (task monitoring): http://localhost:5555/
+
+### 6. Running management commands
+
+To run Django management commands, use:
+
+```bash
+docker-compose exec web python manage.py <command>
+```
+
+### 7. Running tests
+
+```bash
+# Run all tests
+docker-compose exec web python manage.py test
+
+# Run specific test module
+docker-compose exec web python manage.py test app.tests
+```
+
+### 8. Development services
+
+The development environment includes the following services:
+- **Django development server**: http://localhost:8000
+- **PostgreSQL database**: `postgresql://postgres:postgres@localhost:5432/speech2text`
+- **Redis**: `redis://localhost:6379`
+- **Celery worker**: For background task processing
+- **Celery beat**: For scheduled tasks
+- **Nginx**: Reverse proxy with static file serving on http://localhost:8080
+
+### 9. Debugging
+
+For debugging with VS Code, you can use the following launch configuration:
+
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Django",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/app/manage.py",
+            "args": [
+                "runserver",
+                "0.0.0.0:8000"
+            ],
+            "django": true,
+            "justMyCode": true
+        }
+    ]
+}
+```
 - Celery worker for background tasks
 - Celery beat for scheduled tasks
 

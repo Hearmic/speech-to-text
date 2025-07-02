@@ -1,8 +1,5 @@
 from django.urls import path
-from django.urls import re_path
 from . import views
-from .views.speaker_diarization import process_speaker_diarization
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authtoken.views import obtain_auth_token
 
 app_name = 'audio'
@@ -18,6 +15,6 @@ urlpatterns = [
     # API endpoints
     path('api/token/', obtain_auth_token, name='api_token'),
     path('api/transcriptions/<uuid:transcription_id>/diarize/', 
-         process_speaker_diarization, 
+         views.process_speaker_diarization, 
          name='process_speaker_diarization'),
 ]

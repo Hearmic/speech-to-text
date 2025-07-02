@@ -1,10 +1,17 @@
 import os
 import uuid
+import logging
+import subprocess
+from tempfile import NamedTemporaryFile
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 class Transcription(models.Model):
     # Status choices
@@ -136,8 +143,16 @@ def get_media_upload_path(instance, filename):
     Returns the upload path for media files (audio/video)
     Format: user_<user_id>/<file_type>/<year>/<month>/<filename>
     """
-    file_type = 'videos' if filename.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v', '.3gp')) else 'audios'
-    return f"user_{instance.user.id}/{file_type}/{timezone.now().strftime('%Y/%m')}/{filename}"
+    file_type = 'videos' if instance.is_video else 'audio'
+    return f'user_{instance.transcription.user.id}/{file_type}/{timezone.now().strftime("%Y/%m")}/{filename}'
+
+
+def audio_file_path(instance, filename):
+    """
+    Returns the upload path for audio files
+    Format: user_<user_id>/audio/<year>/<month>/<filename>
+    """
+    return f'user_{instance.user.id}/audio/{timezone.now().strftime("%Y/%m")}/{filename}'
 
 
 class MediaFile(models.Model):

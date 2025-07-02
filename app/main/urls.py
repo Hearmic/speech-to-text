@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import home, custom_404, ContactView, contact_success, PricingView
 
+# Set the application namespace
 app_name = 'main'
 
 urlpatterns = [

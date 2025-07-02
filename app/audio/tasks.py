@@ -13,13 +13,16 @@ from celery import shared_task, chain
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
+from pydub import AudioSegment
+
+# Initialize logger at module level
+logger = get_task_logger(__name__)
 
 # Import diarization module
 try:
     from .diarization import SpeakerDiarizer, merge_transcription_with_diarization
     DIARIZATION_AVAILABLE = True
 except ImportError as e:
-    logger = get_task_logger(__name__)
     logger.warning(f"Failed to import diarization module: {e}")
     DIARIZATION_AVAILABLE = False
 
@@ -328,17 +331,18 @@ def process_audio_task(self, transcription_id):
         
         # Get the associated media file (audio or video)
         try:
-            audio_file = transcription.audio_file
-            logger.info(f"Found media file: {audio_file.file.name}")
-        except AudioFile.DoesNotExist:
-            error_msg = f"No media file found for transcription {transcription.id}"
+            media_file = transcription.media_file
+            logger.info(f"Found media file: {media_file.original_file.name}")
+        except Exception as e:
+            error_msg = f"Error accessing media file for transcription {transcription.id}: {str(e)}"
             logger.error(error_msg)
             transcription.status = Transcription.STATUS_FAILED
-            transcription.save(update_fields=['status'])
+            transcription.error_message = error_msg[:200]  # Truncate to fit in the field
+            transcription.save(update_fields=['status', 'error_message'])
             return {"status": "error", "message": error_msg}
         
         # Get the full path to the media file
-        media_path = os.path.join(settings.MEDIA_ROOT, str(audio_file.file))
+        media_path = os.path.join(settings.MEDIA_ROOT, str(media_file.original_file))
         logger.info(f"Media file path: {media_path}")
         
         # Check if file exists
@@ -505,7 +509,7 @@ def process_audio_task(self, transcription_id):
                 # Update the audio file duration if we have segments
                 if segments:
                     # Get duration from the last segment's end time
-                    audio_file.duration = segments[-1]["end"]
+                    media_file.duration = segments[-1]["end"]
                 else:
                     # Fallback: Try to get duration using ffprobe
                     try:
@@ -520,13 +524,13 @@ def process_audio_task(self, transcription_id):
                             audio_path_str
                         ]
                         duration = float(subprocess.check_output(cmd).decode('utf-8').strip())
-                        audio_file.duration = duration
+                        media_file.duration = duration
                     except Exception as e:
                         logger.warning(f"Could not determine audio duration: {str(e)}")
-                        audio_file.duration = 0  # Default to 0 if duration cannot be determined
+                        media_file.duration = 0  # Default to 0 if duration cannot be determined
                 
                 # Only update the duration field, not updated_at
-                audio_file.save(update_fields=['duration'])
+                media_file.save(update_fields=['duration'])
                 
                 return {
                     "status": "success",

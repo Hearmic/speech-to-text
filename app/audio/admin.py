@@ -1,3 +1,5 @@
 from django.contrib import admin
+from .models import Transcription, MediaFile
 
-# Register your models here.
+admin.site.register(Transcription)
+admin.site.register(MediaFile)

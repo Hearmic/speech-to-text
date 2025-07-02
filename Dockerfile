@@ -1,21 +1,51 @@
-# =======================================
-# Builder stage
-# =======================================
-FROM python:3.11-slim AS builder
+# Development stage
+FROM python:3.11-slim AS development
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=100 \
+    DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Install essential build dependencies first
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        python3-dev \
+        gcc \
+        g++ \
+        make \
+        cmake \
+        pkg-config \
+        git \
+        libssl-dev \
+        libffi-dev \
+        libsndfile1 \
+        libsndfile1-dev \
+        sox \
+        libsox-fmt-mp3 \
+        libavcodec-extra \
+        libavformat-dev \
+        libavutil-dev \
+        libavfilter-dev \
+        libavdevice-dev \
+        libflac-dev \
+        libvorbis-dev \
+        libmp3lame-dev \
+        libxml2-dev \
+        libxmlsec1-dev \
+        libxmlsec1-openssl \
+        libopenblas64-0 \
+        libcairo2 \
+        libcairo2-dev \
+        ffmpeg \
+        portaudio19-dev \
+        swig \
+        libpulse-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -23,160 +53,44 @@ WORKDIR /app
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
+# Install Python dependencies with specific versions
+RUN pip install --no-cache-dir --upgrade pip==23.3.2 && \
+    # Install PyTorch with CPU support first
+    pip install --no-cache-dir torch==2.0.1 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu && \
+    # Install numpy first as it's a dependency for many packages
+    pip install --no-cache-dir numpy==1.24.3 && \
+    # Install Cython and setuptools before other packages
+    pip install --no-cache-dir Cython==3.0.5 setuptools==68.2.2 && \
+    # Install requirements in batches to handle dependencies better
     pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Copy application code
 COPY . .
 
-# Create static files directory (will be empty if no static files)
-RUN mkdir -p staticfiles
+# Create necessary directories
+RUN mkdir -p /app/staticfiles /app/media /var/log/django \
+    && chown -R 1000:1000 /app /var/log/django \
+    && chmod -R 755 /var/log/django
 
-# =======================================
-# Development image
-# =======================================
-FROM python:3.11-slim AS development
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    ffmpeg \
-    gettext \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create django user with home directory and proper permissions
-RUN mkdir -p /home/django && \
-    groupadd -r django && \
-    useradd -r -g django -d /home/django -s /bin/bash django && \
-    chown -R django:django /home/django
-
-# Set the working directory
-WORKDIR /app
-
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir celery==5.3.6 kombu==5.3.6 billiard==4.2.1 vine==5.1.0 python-dotenv psutil==7.0.0 humanize==4.12.3
-
-# Create and set permissions for whisper cache directory
-RUN mkdir -p /tmp/whisper-cache && \
-    chown -R django:django /tmp/whisper-cache && \
-    chmod 777 /tmp/whisper-cache && \
-    mkdir -p /home/django/.cache/whisper && \
-    chown -R django:django /home/django/.cache && \
-    chmod 777 /home/django/.cache/whisper
-
-# Ensure Celery is in PATH
-ENV PATH="/usr/local/bin:${PATH}"
-ENV PYTHONPATH="${PYTHONPATH}:/app"
-
-# Copy application code
-COPY --chown=django:django . .
-
-# Set the working directory to the Django project
-WORKDIR /app/app
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    DJANGO_SETTINGS_MODULE=app.settings.local \
-    PYTHONFAULTHANDLER=1
-
-# Copy entrypoint script
-COPY --chown=django:django docker/entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Create necessary directories and set permissions
-RUN mkdir -p /app/staticfiles /app/media && \
-    chown -R django:django /app
+# Create non-root user and switch to it
+RUN useradd -u 1000 -d /app appuser \
+    && chown -R appuser:appuser /app /var/log/django
 
 # Switch to non-root user
-USER django
-
-# Expose the port the app runs on
-EXPOSE 8000
-
-# Add Python user base bin to PATH
-ENV PATH="/home/django/.local/bin:${PATH}"
-
-# Set entrypoint
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-# Command to run the application
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-
-# =======================================
-# Production image
-# =======================================
-FROM python:3.11-slim AS production
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    ffmpeg \
-    gettext \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create django user with home directory and proper permissions
-RUN mkdir -p /home/django && \
-    groupadd -r django && \
-    useradd -r -g django -d /home/django -s /bin/bash django && \
-    chown -R django:django /home/django
-
-# Set the working directory
-WORKDIR /app
-
-# Copy installed dependencies from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-# Copy application code
-COPY --chown=django:django . .
-
-# Set the working directory to the Django project
-WORKDIR /app/app
+USER appuser
 
 # Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    DJANGO_SETTINGS_MODULE=app.settings.production \
-    PYTHONFAULTHANDLER=1 \
-    PYTHONHASHSEED=random \
-    PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100 \
-    PYTHONPATH="/app:${PYTHONPATH}"
+ENV PATH="/home/appuser/.local/bin:$PATH" \
+    PYTHONPATH=/app \
+    DJANGO_SETTINGS_MODULE=app.settings.base \
+    DEBUG=1
 
-# Collect static files
-RUN python manage.py collectstatic --noinput || echo "No static files to collect"
-
-# Copy entrypoint script
-COPY --chown=django:django docker/entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Create necessary directories and set permissions
-RUN mkdir -p /app/staticfiles /app/media /home/django/.cache/whisper && \
-    chown -R django:django /app /home/django/.cache
-
-# Switch to non-root user
-USER django
-
-# Expose the port the app runs on
+# Expose port
 EXPOSE 8000
 
-# Set entrypoint
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health/ || exit 1
 
-# Command to run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--threads", "2", "--timeout", "120", "app.wsgi:application"]
-
-# =======================================
-# Final stage - Default to development
-# =======================================
-FROM development AS final
+# Run the application with Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--worker-class", "gthread", "--threads", "4", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "app.wsgi:application"]

@@ -8,8 +8,6 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
-from django.conf.urls import handler404
-
 # Import views directly to avoid circular imports
 from django.views.generic import TemplateView, RedirectView
 from django.contrib.auth.decorators import login_required
@@ -18,11 +16,12 @@ from django.contrib.auth import logout as auth_logout
 from django.shortcuts import redirect
 
 from main.views.views import home
-from main.views.health import HealthCheckView
+from app.health import HealthCheckView, health_check
 
 urlpatterns = [
     # Health check
-    path('health/', HealthCheckView.as_view(), name='health_check'),
+    path('health/', health_check, name='health_check'),
+    path('health/detailed/', HealthCheckView.as_view(), name='health_check_detailed'),
     
     # Main app URLs
     path('', include('main.urls', namespace='main')),
@@ -41,12 +40,15 @@ urlpatterns = [
     # path('api/', include('api.urls')),
 ]
 
-# Custom error handlers
-handler400 = 'main.views.custom_400'
-handler403 = 'main.views.custom_403'
-handler404 = 'main.views.custom_404'
-handler500 = 'main.views.custom_500'
+# Error handlers are handled by Django's default handlers
 
-# Serve media files in development
+# Serve static and media files in development
 if settings.DEBUG:
+    from django.conf.urls.static import static
+    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+    
+    # Serve static files
+    urlpatterns += staticfiles_urlpatterns()
+    
+    # Serve media files
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

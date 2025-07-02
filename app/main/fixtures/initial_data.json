@@ -1,0 +1,41 @@
+[
+  {
+    "model": "django_celery_beat.periodictask",
+    "pk": 1,
+    "fields": {
+      "name": "Check for pending tasks",
+      "task": "app.tasks.check_pending_tasks",
+      "args": "[]",
+      "kwargs": "{}",
+      "queue": "celery",
+      "exchange": "",
+      "routing_key": "",
+      "expires": null,
+      "enabled": true,
+      "last_run_at": null,
+      "total_run_count": 0,
+      "date_changed": "2025-06-29T07:00:00Z",
+      "description": "Periodic task to check for pending tasks",
+      "crontab": 1,
+      "interval": null,
+      "solar": null,
+      "one_off": false,
+      "start_time": null,
+      "priority": null,
+      "headers": "{}",
+      "clocked": null
+    }
+  },
+  {
+    "model": "django_celery_beat.crontabschedule",
+    "pk": 1,
+    "fields": {
+      "minute": "*/5",
+      "hour": "*",
+      "day_of_week": "*",
+      "day_of_month": "*",
+      "month_of_year": "*",
+      "timezone": "UTC"
+    }
+  }
+]

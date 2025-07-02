@@ -1,61 +1,89 @@
 # Core dependencies
-asgiref==3.8.1
+Django==4.2.23
+python-dotenv==1.0.1
+whitenoise==6.9.0
+psycopg2-binary==2.9.10
+gunicorn==23.0.0
+
+# Database
+dj-database-url==3.0.0
+
+# AI/ML Dependencies
+torch==2.0.1
+torchaudio==2.0.2
+openai-whisper==20231117
+transformers==4.30.2
+huggingface-hub==0.16.4
+numpy==1.24.3
+
+# Audio Processing
+ffmpeg-python==0.2.0
+librosa==0.10.1
+soundfile==0.12.1
 pyannote.audio==3.1.1
 pyannote.core==5.0.0
-pyannote.database==5.0.6
-huggingface-hub==0.27.4
-torchaudio==2.7.1
-psutil==7.0.0
-humanize==4.12.3
-certifi==2025.1.31
-psycopg2-binary==2.9.9
-whitenoise==6.6.0
-charset-normalizer==3.4.2
-Django==4.2.11  # Downgraded to be compatible with django-celery-beat
-python-dotenv==1.0.1  # For loading .env files
-ffmpeg==1.4
-filelock==3.18.0
-fsspec==2025.5.1
-idna==3.10
-Jinja2==3.1.6
-llvmlite==0.44.0
-MarkupSafe==3.0.2
-more-itertools==10.7.0
-mpmath==1.3.0
-networkx==3.5
-numba==0.61.2
-numpy==2.2.6
-openai-whisper==20240930
-regex==2024.11.6
-requests==2.32.3
-setuptools==80.9.0
-sqlparse==0.5.3
-sympy==1.14.0
-tiktoken==0.9.0
-torch==2.7.1
-tqdm==4.67.1
-typing_extensions==4.14.0
-urllib3==2.4.0
+pyannote.database==5.0.1
+pyannote.pipeline==3.0.1  # Updated to latest available version
+pyannote.metrics==3.2.1
 
-# Django REST framework
-djangorestframework==3.15.1
+# API and Web
+requests==2.31.0
+urllib3==2.0.7
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+
+# Django REST Framework
+djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.1
-django-cors-headers==4.3.1
-django-storages==1.14.2
 
 # Authentication
-django-allauth==0.63.1
-python3-openid==3.2.0
-requests-oauthlib==2.0.0
-pyjwt==2.9.0
+django-allauth==0.61.1
 python-jose==3.3.0
-python3-saml==1.17.0
+python3-openid==3.2.0
+requests-oauthlib==1.3.1
+pyjwt==2.8.0
 
-# Celery and related
+# Forms
+django-crispy-forms==2.1
+crispy-bootstrap5==2023.10
+
+# Celery and Task Queue
 celery==5.3.6
-django-celery-beat==2.7.0
+redis==5.0.1
+flower==2.0.1
 django-celery-results==2.5.1
-redis==5.0.3
-kombu==5.3.6
-billiard==4.2.1
+django-celery-beat==2.5.0  # Downgraded for Python 3.11 compatibility
+django-redis==5.4.0
+kombu==5.3.4
+
+# Additional Dependencies
+scipy==1.10.1
+scikit-learn==1.3.0
+pandas==2.0.3
+python-multipart==0.0.6
+billiard==4.2.0
+
+# Utils
+python-magic==0.4.27
+python-dateutil==2.8.2
+pytz==2023.3.post1
+tqdm==4.66.1  # Using the newer version
+typing-extensions==4.10.0
+
+# Monitoring and Performance
+psutil==5.9.5
+humanize==4.7.0
+
+# Security
+certifi==2023.7.22
+charset-normalizer==3.3.2
+idna==3.4
+
+# CORS and Storage
+django-cors-headers==4.2.0
+django-storages==1.14.0
+
+# Required for some dependencies
+setuptools==68.2.2
+wheel==0.41.3
 vine==5.1.0

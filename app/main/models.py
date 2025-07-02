@@ -6,45 +6,18 @@ import json
 
 User = get_user_model()
 
-class SubscriptionPlan(models.Model):
-    """Model for different subscription plans"""
-    name = models.CharField(max_length=100)
-    description = models.TextField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    features = models.JSONField(default=dict)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        ordering = ['price']
+# Note: SubscriptionPlan and UserSubscription models have been moved to the 'subscriptions' app
+# to avoid duplication and conflicts. Please use the models from the 'subscriptions' app instead.
+# This file is kept for backward compatibility but will be removed in a future version.
 
 
-class UserSubscription(models.Model):
-    """Model to track user subscriptions"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='subscription')
-    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT)
-    is_active = models.BooleanField(default=True)
-    start_date = models.DateTimeField(auto_now_add=True)
-    end_date = models.DateTimeField()
-    stripe_subscription_id = models.CharField(max_length=255, blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def is_valid(self):
-        """Check if subscription is currently active"""
-        return self.is_active and timezone.now() <= self.end_date
-
-    def __str__(self):
-        return f"{self.user.email} - {self.plan.name}"
-
-
-class Transcription(models.Model):
-    """Model to store transcriptions with speaker diarization"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transcriptions')
+class UserTranscription(models.Model):
+    """Legacy model to store transcriptions with speaker diarization (deprecated)
+    
+    This model is kept for backward compatibility but should be phased out in favor of
+    the more comprehensive Transcription model in the audio app.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='legacy_transcriptions')
     audio_file = models.FileField(upload_to='audio_files/')
     original_filename = models.CharField(max_length=255)
     transcription = models.TextField(blank=True, null=True)
@@ -73,7 +46,9 @@ class Transcription(models.Model):
             return self.transcription or ""
 
     def __str__(self):
-        return f"{self.original_filename} - {self.user.email}"
+        return f"[Legacy] {self.original_filename} - {self.user.email}"
 
     class Meta:
+        verbose_name = 'Legacy User Transcription'
+        verbose_name_plural = 'Legacy User Transcriptions'
         ordering = ['-created_at']

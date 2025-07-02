@@ -7,10 +7,10 @@
 <!-- Debug Info (remove in production) -->
 <div class="alert alert-info">
     <strong>Debug Info:</strong>
-    <div>User: {{ debug_user|default:"None" }}</div>
-    <div>Is Authenticated: {{ debug_info.is_authenticated|yesno:"Yes,No" }}</div>
-    <div>Has Subscription: {{ debug_info.has_subscription|yesno:"Yes,No" }}</div>
-    <div>User Attributes: {{ debug_info.user_attrs|join:", "|truncatechars:100 }}</div>
+    <div>User: {{ request.user|default:"None" }}</div>
+    <div>Is Authenticated: {{ request.user.is_authenticated|yesno:"Yes,No" }}</div>
+    <div>Has Subscription: {{ request.user.has_subscription|yesno:"Yes,No" }}</div>
+    <div>User Attributes: {{ request.user.user_attrs|join:", "|truncatechars:100 }}</div>
 </div>
 
 <div class="row justify-content-center">

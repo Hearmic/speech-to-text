@@ -1,6 +1,9 @@
-from .base import *
+import os
+from .base import *  # noqa
 
-try:
-    from .local import *
-except ImportError:
-    pass
+# Import development settings by default
+if os.getenv('DJANGO_ENV') != 'production':
+    try:
+        from .development import *  # noqa
+    except ImportError:
+        pass

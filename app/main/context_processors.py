@@ -22,12 +22,19 @@ def navigation_links(request):
     """
     Add navigation links to the template context.
     """
-    return {
-        'nav_links': [
-            {'name': 'Home', 'url': reverse('main:home'), 'icon': 'house'},
+    nav_links = [
+        {'name': 'Home', 'url': reverse('main:home'), 'icon': 'house'},
+    ]
+    
+    if request.user.is_authenticated:
+        nav_links.extend([
             {'name': 'Transcriptions', 'url': reverse('audio:audio_list'), 'icon': 'collection'},
             {'name': 'New Transcription', 'url': reverse('audio:upload_audio'), 'icon': 'upload'},
-            {'name': 'Pricing', 'url': reverse('main:pricing'), 'icon': 'tags'},
-            {'name': 'Contact', 'url': reverse('main:contact'), 'icon': 'envelope'},
-        ]
-    }
+        ])
+    
+    nav_links.extend([
+        {'name': 'Pricing', 'url': reverse('main:pricing'), 'icon': 'tags'},
+        {'name': 'Contact', 'url': reverse('main:contact'), 'icon': 'envelope'},
+    ])
+    
+    return {'nav_links': nav_links}
