@@ -1,4 +1,4 @@
-# Speech to Text with Whisper AI
+# Speech to Text with  Faster Whisper
 
 A high-performance Django-based web application that provides speech-to-text functionality using OpenAI's Whisper AI, containerized with Docker for easy deployment and scaling.
 
@@ -99,40 +99,14 @@ docker-compose exec web python manage.py <command>
 
 ## 🚀 Production Deployment
 
-1. Update `.env` with production settings:
+Update `.env` with production settings:
    ```bash
    DEBUG=0
    SECRET_KEY=your-secure-secret-key
    ALLOWED_HOSTS=.yourdomain.com
    ```
 
-2. Build and start in production mode:
-   ```bash
-   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
-   ```
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-# Build and start all services
-make build
-make up
-
-# Or in one command
-make dev
-```
-
-#### Option 2: Using Docker Compose directly
-
-```bash
-# Build and start all services
-docker-compose -f docker-compose.yml -f docker-compose.override.yml up --build -d
-
-# View logs
-docker-compose logs -f
-```
-
-### 4. Initialize the database and create a superuser
+### Initialize the database and create a superuser
 
 ```bash
 # Run database migrations
@@ -142,14 +116,14 @@ docker-compose exec web python manage.py migrate
 docker-compose exec web python manage.py createsuperuser
 ```
 
-### 5. Access the application
+### Access the application
 
 - **Django Admin**: http://localhost:8000/admin/
 - **Main Application**: http://localhost:8000/
 - **API Documentation**: http://localhost:8000/api/docs/ (if enabled)
 - **Celery Flower** (task monitoring): http://localhost:5555/
 
-### 6. Running management commands
+### Running management commands
 
 To run Django management commands, use:
 
@@ -157,7 +131,7 @@ To run Django management commands, use:
 docker-compose exec web python manage.py <command>
 ```
 
-### 7. Running tests
+### Running tests
 
 ```bash
 # Run all tests
@@ -167,7 +141,7 @@ docker-compose exec web python manage.py test
 docker-compose exec web python manage.py test app.tests
 ```
 
-### 8. Development services
+### Development services
 
 The development environment includes the following services:
 - **Django development server**: http://localhost:8000
@@ -177,7 +151,7 @@ The development environment includes the following services:
 - **Celery beat**: For scheduled tasks
 - **Nginx**: Reverse proxy with static file serving on http://localhost:8080
 
-### 9. Debugging
+### Debugging
 
 For debugging with VS Code, you can use the following launch configuration:
 
@@ -203,13 +177,13 @@ For debugging with VS Code, you can use the following launch configuration:
 - Celery worker for background tasks
 - Celery beat for scheduled tasks
 
-### 4. Run database migrations
+### Run database migrations
 
 ```bash
 make migrate
 ```
 
-### 5. Initialize subscription plans
+### Initialize subscription plans
 
 ```bash
 make init-plans
@@ -400,14 +374,3 @@ The `scripts/` directory contains useful scripts for development and maintenance
 └── Makefile                 # Common commands
 ```
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [Django](https://www.djangoproject.com/)
-- [Whisper AI](https://openai.com/research/whisper)
-- [Docker](https://www.docker.com/)
-- [Celery](https://docs.celeryproject.org/)
-- [Stripe](https://stripe.com/)
